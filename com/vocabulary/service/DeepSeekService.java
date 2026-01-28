@@ -35,20 +35,23 @@ public class DeepSeekService {
     }
 
     public WordResponse getWordData(String word) {
-        // Updated prompt to request an array of objects
-        String prompt = "You are a dictionary. For the English word '" + word + "', " +
-                "provide a STRICT JSON response (no markdown) with these fields: " +
-                "1. 'meaning' (in Marathi), " +
-                "2. 'explanation' (in Marathi), " +
-                "3. 'examples' (a list of 3 objects, each with 'marathi' and 'english' keys).";
+    	
+    	String prompt = String.format(
+    	        "You are a bilingual English-Marathi dictionary. Analyze the word '%s'. " +
+    	        "1. Identify if the word is English or Marathi. " +
+    	        "2. If it's English, provide the 'meaning' in Marathi. If it's Marathi, provide the 'meaning' in English. " +
+    	        "3. Provide a detailed 'explanation' in Marathi. " +
+    	        "4. Provide 3 'examples' (objects with 'marathi' and 'english' keys) showing the word in use. " +
+    	        "Return a STRICT JSON object only.", word);
 
-        Map<String, Object> requestBody = Map.of(
-            "model", apiModel, 
-            "messages", List.of(
-                Map.of("role", "user", "content", prompt)
-            ),
-            "response_format", Map.of("type", "json_object")
-        );
+    	    Map<String, Object> requestBody = Map.of(
+    	        "model", apiModel,
+    	        "messages", List.of(
+    	            Map.of("role", "system", "content", "You are a helpful assistant that outputs JSON."),
+    	            Map.of("role", "user", "content", prompt)
+    	        ),
+    	        "response_format", Map.of("type", "json_object")
+    	    );
 
         try {
             String response = restClient.post()
@@ -69,13 +72,7 @@ public class DeepSeekService {
     private WordResponse parseResponse(String rawJson, String originalWord) {
         try {
             JsonNode root = objectMapper.readTree(rawJson);
-            
-            // Extract the 'content' field from the AI provider's response
-            String contentString = root.path("choices").get(0)
-                    .path("message")
-                    .path("content").asText();
-
-            // Parse the actual dictionary data
+            String contentString = root.path("choices").get(0).path("message").path("content").asText();
             JsonNode data = objectMapper.readTree(contentString);
 
             List<ExampleDto> examples = new ArrayList<>();
@@ -90,9 +87,12 @@ public class DeepSeekService {
                 }
             }
 
+            // Logic: Return the meaning provided by the AI. 
+            // You might want to update your DTO to include a 'detectedLanguage' field 
+            // if your UI needs to know which way the translation went.
             return new WordResponse(
                 originalWord,
-                "Marathi",
+                "Bilingual", // Changed from "Marathi" to "Bilingual"
                 data.path("meaning").asText(),
                 data.path("explanation").asText(),
                 examples
