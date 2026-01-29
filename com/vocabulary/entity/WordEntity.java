@@ -17,6 +17,7 @@ public class WordEntity {
     private String meaning;
     private String explanation;
     private List<Example> examples;
+    private int count = 0;
 
     public WordEntity() {}
 
@@ -38,6 +39,9 @@ public class WordEntity {
 
     public List<Example> getExamples() { return examples; }
     public void setExamples(List<Example> examples) { this.examples = examples; }
+    
+    public int getCount() { return count; }
+    public void setCount(int count) { this.count = count; }
 
     public static class Example {
         private String marathi;

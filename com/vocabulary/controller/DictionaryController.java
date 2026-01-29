@@ -7,7 +7,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import com.vocabulary.dto.WordResponse;
+import com.vocabulary.entity.MasteredWordEntity;
 import com.vocabulary.entity.WordEntity;
+import com.vocabulary.repository.MasteredWordRepository;
 import com.vocabulary.repository.WordRepository;
 import com.vocabulary.service.DeepSeekService;
 
@@ -20,12 +22,49 @@ public class DictionaryController {
 
     private final DeepSeekService deepSeekService;
     private final WordRepository wordRepository; // Inject the repo
+    private final MasteredWordRepository masteredRepository;
 
-    public DictionaryController(DeepSeekService deepSeekService, WordRepository wordRepository) {
+    public DictionaryController(DeepSeekService deepSeekService, WordRepository wordRepository,MasteredWordRepository masteredRepository) {
         this.deepSeekService = deepSeekService;
         this.wordRepository = wordRepository;
+        this.masteredRepository = masteredRepository;
     }
+    
+    @PutMapping("/increment-count/{id}")
+    public ResponseEntity<?> incrementCount(@PathVariable String id) {
+        return wordRepository.findById(id).map(word -> {
+            // 1. Increment logic
+            int newCount = word.getCount() + 1;
+            word.setCount(newCount);
 
+            if (newCount >= 10) {
+                // 1. Create the Mastered version
+                MasteredWordEntity mastered = new MasteredWordEntity();
+                
+                // 2. Copy the data (You can use a library or manual setters)
+                mastered.setId(word.getId());
+                mastered.setWord(word.getWord());
+                mastered.setMeaning(word.getMeaning());
+                mastered.setLanguage(word.getLanguage());
+                mastered.setExplanation(word.getExplanation());
+                mastered.setExamples(word.getExamples());
+                mastered.setCount(newCount);
+
+                // 3. Save to 'mastered_words' collection
+                masteredRepository.save(mastered); 
+                
+                // 4. Delete from 'searched_words' collection
+                wordRepository.deleteById(id);
+                
+                return ResponseEntity.ok("{\"status\": \"mastered\"}");
+            } else {
+                // 4. UPDATE EXISTING
+                WordEntity updated = wordRepository.save(word);
+                return ResponseEntity.ok(updated);
+            }
+        }).orElse(ResponseEntity.notFound().build());
+    }
+    
     @GetMapping("/lookup")
     public ResponseEntity<WordResponse> lookup(@RequestParam String word) {
         return ResponseEntity.ok(deepSeekService.getWordData(word));
@@ -43,6 +82,7 @@ public class DictionaryController {
         wordRepository.deleteById(id);
         return ResponseEntity.noContent().build();
     }
+    
 
     @PostMapping("/save")
     public ResponseEntity<?> saveWord(@RequestBody WordResponse response) {
@@ -54,6 +94,8 @@ public class DictionaryController {
             return ResponseEntity.status(HttpStatus.OK)
                                  .body("{\"message\": \"Word already in history\"}");
         }
+        
+        
 
         // 3. Map and Save
         WordEntity entity = new WordEntity();
