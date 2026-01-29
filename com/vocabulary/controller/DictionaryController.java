@@ -70,16 +70,29 @@ public class DictionaryController {
         return ResponseEntity.ok(deepSeekService.getWordData(word));
     }
     
- // 1. Fetch all words from MongoDB
+ // 1. Fetch all words from word MongoDB
     @GetMapping("/history")
     public ResponseEntity<List<WordEntity>> getHistory() {
         return ResponseEntity.ok(wordRepository.findAll());
     }
+    
+    //get words from mastery 
+    @GetMapping("/master")
+    public ResponseEntity<List<MasteredWordEntity>> getmastery() {
+        return ResponseEntity.ok(masteredRepository.findAll());
+    }
 
-    // 2. Delete a word from MongoDB by ID
+    // 2. Delete master word
     @DeleteMapping("/delete/{id}")
     public ResponseEntity<Void> deleteWord(@PathVariable String id) {
-        wordRepository.deleteById(id);
+    	masteredRepository.deleteById(id);
+        return ResponseEntity.noContent().build();
+    }
+    
+    // 2. Delete current word
+    @DeleteMapping("/deleteCurrent/{id}")
+    public ResponseEntity<Void> deleteCWord(@PathVariable String id) {
+    	wordRepository.deleteById(id);
         return ResponseEntity.noContent().build();
     }
     
